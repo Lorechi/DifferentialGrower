@@ -1,28 +1,28 @@
 const params = {
-  minEdge: 10,
-  minContourArea: 2500,
-  maxEdge: 24,
-  curvatureThreshold: 0.55,
-  maxNewPoints: 20,
-  repelRadius: 26,
-  repelStrength: 0.25,
-  relaxStrength: 0.35,
-  iterations: 1,
-  timeStep: 0.5,
-  maxPoints: 1000,
-  smoothStrength: 0.3,
-  smoothEvery: 3,
-  seedInterval: 3,
-  growthDelay: 0.8,
-  maxContours: 3,
-  dissolveTime: 1.8,
-  fragmentPoints: 12,
-  burstSpeed: 95,
-  burstJitter: 45,
-  burstDrag: 0.92,
-  fragmentThickness: 2,
-  outlineThickness: 2,
-  cameraBackground: false,
+  minEdge: 10, // Spacing used when turning the camera silhouette into points.
+  minContourArea: 2500, // Ignores tiny segmentation blobs and background noise.
+  maxEdge: 24, // Adds a point when a line segment grows longer than this.
+  curvatureThreshold: 0.55, // Adds points sooner at sharp bends; lower means more sensitive.
+  maxNewPoints: 60, // Maximum new points inserted per growth step.
+  repelRadius: 40, // Distance where points push away from each other, widening ribbons.
+  repelStrength: 1.0, // Strength of the point repulsion that drives differential growth.
+  relaxStrength: 0.35, // Pull toward neighboring points, keeping the outline connected.
+  iterations: 1, // Growth simulation steps per rendered frame.
+  timeStep: 0.5, // Overall simulation speed multiplier.
+  maxPoints: 1000, // Hard cap for points in each outline.
+  smoothStrength: 0.3, // Softens jitter and harsh corners after growth.
+  smoothEvery: 3, // Applies smoothing every N growth steps.
+  seedInterval: 3, // Seconds between reseeding from the current camera outline.
+  growthDelay: 0.8, // Seconds to show the clean outline before growth begins.
+  maxContours: 3, // Maximum separate silhouette outlines to grow.
+  dissolveTime: 1.8, // Seconds before old burst fragments disappear.
+  fragmentPoints: 12, // Approximate number of points in each dissolving fragment.
+  burstSpeed: 95, // Base outward speed for old outline fragments.
+  burstJitter: 45, // Random sideways motion added to each fragment.
+  burstDrag: 0.92, // Per-frame damping for fragment velocity.
+  fragmentThickness: 2, // Stroke width for dissolving fragments.
+  outlineThickness: 2, // Stroke width for the active growing outline.
+  cameraBackground: false, // Shows the live camera behind the generated line art.
 };
 
 const video = document.getElementById("camera");

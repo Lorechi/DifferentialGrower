@@ -1,6 +1,13 @@
 # Differential Growth Camera
 
-Webcam-based differential growth outline experiment.
+Static webcam-based differential growth outline experiment. The GitHub Pages
+website lives at the repository root:
+
+- `index.html`
+- `styles.css`
+- `app.js`
+
+The older Python/OpenCV prototype is archived in `archive/`.
 
 ## GitHub Pages
 
@@ -12,23 +19,28 @@ This repository can be served directly with GitHub Pages:
 4. Set the branch to `main` and the folder to `/ (root)`.
 5. Save.
 
-The root `index.html` redirects to the static browser app in
-`pygame_app/web/`.
-
 The browser app uses the webcam, so it must be served from `https://` or
 `localhost`. GitHub Pages works because it serves over HTTPS.
 
 ## Local Run
 
 ```bash
-cd pygame_app/web
 python -m http.server 8000
 ```
 
 Then open `http://127.0.0.1:8000`.
 
+## Controls
+
+- Q / Esc: stop camera
+- R: reseed from current outline
+- D: toggle camera background
+- F: toggle fullscreen
+
+Use the side controls menu for live growth, smoothing, speed, and line-width
+sliders.
+
 ## Python App
 
-The older Python/OpenCV version is still in `pygame_app/main_camera.py`.
-Recreate a virtual environment from `pygame_app/requirements.txt` if you want
-to run it locally.
+The old Python/OpenCV version is archived in `archive/`. Recreate a virtual
+environment from its `requirements.txt` if you want to run it locally.
