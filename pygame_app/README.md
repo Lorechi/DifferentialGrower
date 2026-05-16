@@ -4,6 +4,9 @@ This project uses a camera + MediaPipe segmentation and applies differential
 growth to the detected human outline. It includes the original Python/OpenCV
 app and a static browser version in `web/`.
 
+For GitHub Pages, serve the repository from `/ (root)`. The root `index.html`
+redirects to this static browser app.
+
 ## Setup
 
 ```bash
