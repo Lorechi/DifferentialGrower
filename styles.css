@@ -63,6 +63,14 @@ input {
   top: 14px;
   left: 14px;
   z-index: 3;
+  opacity: 0;
+  transition: opacity 140ms ease, background 140ms ease;
+}
+
+.menu-toggle:hover,
+.menu-toggle:focus-visible,
+.menu-toggle[aria-expanded="true"] {
+  opacity: 1;
 }
 
 .controls {

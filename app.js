@@ -23,6 +23,7 @@ const params = {
   fragmentThickness: 2, // Stroke width for dissolving fragments.
   outlineThickness: 2, // Stroke width for the active growing outline.
   cameraBackground: false, // Shows the live camera behind the generated line art.
+  cameraBackgroundOpacity: 0.5, // Opacity for the camera background over black.
 };
 
 const video = document.getElementById("camera");
@@ -553,7 +554,7 @@ function render(now) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   if (params.cameraBackground && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-    drawMirroredVideo(1);
+    drawMirroredVideo(params.cameraBackgroundOpacity);
   }
 
   drawFragments();
