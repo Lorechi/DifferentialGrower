@@ -1,0 +1,156 @@
+:root {
+  color-scheme: dark;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #000;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+button {
+  min-height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 6px;
+  padding: 0 14px;
+  color: #f7f7f7;
+  background: rgba(20, 20, 20, 0.72);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover,
+button:focus-visible {
+  background: rgba(54, 54, 54, 0.82);
+  outline: none;
+}
+
+button[aria-pressed="false"] {
+  color: #b8b8b8;
+}
+
+input {
+  width: 100%;
+  accent-color: #f7f7f7;
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+  background: #000;
+}
+
+#camera {
+  display: none;
+}
+
+#canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+.menu-toggle {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+}
+
+.controls {
+  position: fixed;
+  top: 62px;
+  left: 14px;
+  z-index: 2;
+  width: min(300px, calc(100vw - 28px));
+  max-height: calc(100vh - 82px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(12px);
+  transform: translateX(calc(-100% - 24px));
+  transition: transform 160ms ease;
+}
+
+.controls.open {
+  transform: translateX(0);
+}
+
+.control-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.control-actions button {
+  flex: 1 1 86px;
+  padding: 0 10px;
+}
+
+.sliders {
+  display: grid;
+  gap: 12px;
+}
+
+.sliders label {
+  display: grid;
+  gap: 6px;
+}
+
+.sliders span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #f2f2f2;
+  font-size: 13px;
+}
+
+.sliders output {
+  color: #cfcfcf;
+}
+
+.status {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #f2f2f2;
+  background: rgba(0, 0, 0, 0.64);
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.status:empty {
+  display: none;
+}
+
+@media (max-width: 540px) {
+  .menu-toggle {
+    top: 10px;
+    left: 10px;
+  }
+
+  .controls {
+    top: 56px;
+    left: 10px;
+    width: calc(100vw - 20px);
+  }
+
+  button {
+    min-width: 0;
+    padding: 0 8px;
+  }
+}
