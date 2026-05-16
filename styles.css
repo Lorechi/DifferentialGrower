@@ -42,6 +42,11 @@ input {
   accent-color: #f7f7f7;
 }
 
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
 .stage {
   position: fixed;
   inset: 0;
@@ -108,7 +113,19 @@ input {
 
 .sliders {
   display: grid;
+  gap: 18px;
+}
+
+.slider-group {
+  display: grid;
   gap: 12px;
+}
+
+.slider-group h2 {
+  margin: 0;
+  color: #f2f2f2;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .sliders label {

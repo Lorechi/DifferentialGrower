@@ -1,6 +1,11 @@
 const params = {
   minEdge: 10, // Spacing used when turning the camera silhouette into points.
   minContourArea: 2500, // Ignores tiny segmentation blobs and background noise.
+  segmentationThreshold: 0.4, // Minimum mask confidence needed to count as human.
+  maskCleanupPasses: 1, // Removes small specks and fills tiny holes in the mask.
+  keepLargestContour: true, // Uses only the largest person-shaped blob when enabled.
+  initialOutlineSmoothPasses: 2, // Smoothing passes applied before growth starts.
+  initialOutlineSmoothStrength: 0.35, // Strength of pre-growth outline smoothing.
   maxEdge: 24, // Adds a point when a line segment grows longer than this.
   curvatureThreshold: 0.55, // Adds points sooner at sharp bends; lower means more sensitive.
   maxNewPoints: 60, // Maximum new points inserted per growth step.
@@ -194,7 +199,7 @@ function applyDifferentialGrowth(points) {
   return newPoints;
 }
 
-function smooth(points) {
+function smoothWithStrength(points, strength) {
   if (points.length < 3) return points;
   const count = points.length;
   const smoothed = [];
@@ -206,12 +211,16 @@ function smooth(points) {
     const targetX = (prev.x + curr.x + next.x) / 3;
     const targetY = (prev.y + curr.y + next.y) / 3;
     smoothed.push({
-      x: curr.x + (targetX - curr.x) * params.smoothStrength,
-      y: curr.y + (targetY - curr.y) * params.smoothStrength,
+      x: curr.x + (targetX - curr.x) * strength,
+      y: curr.y + (targetY - curr.y) * strength,
     });
   }
 
   return smoothed;
+}
+
+function smooth(points) {
+  return smoothWithStrength(points, params.smoothStrength);
 }
 
 function loopCentroid(points) {
@@ -351,19 +360,74 @@ function extractValidLoops(mask) {
 
   const image = maskCtx.getImageData(0, 0, maskWidth, maskHeight);
   const binary = new Uint8Array(maskWidth * maskHeight);
+  const threshold = Math.round(params.segmentationThreshold * 255);
   for (let i = 0; i < binary.length; i += 1) {
-    binary[i] = image.data[i * 4] > 26 ? 1 : 0;
+    binary[i] = image.data[i * 4] >= threshold ? 1 : 0;
   }
 
-  const components = findComponents(binary, maskWidth, maskHeight)
+  const cleaned = cleanupMask(binary, maskWidth, maskHeight, params.maskCleanupPasses);
+  const maxContours = params.keepLargestContour ? 1 : params.maxContours;
+
+  const components = findComponents(cleaned, maskWidth, maskHeight)
     .filter((component) => component.area * (canvas.width / maskWidth) * (canvas.height / maskHeight) >= params.minContourArea)
     .sort((a, b) => b.area - a.area)
-    .slice(0, params.maxContours);
+    .slice(0, maxContours);
 
   return components
-    .map((component) => componentToLoop(component, binary, maskWidth, maskHeight))
+    .map((component) => componentToLoop(component, cleaned, maskWidth, maskHeight))
+    .map(smoothInitialOutline)
     .filter((loop) => loop.length > 10)
     .map((loop) => resampleContour(loop, params.minEdge));
+}
+
+function smoothInitialOutline(points) {
+  let smoothed = points;
+  for (let i = 0; i < params.initialOutlineSmoothPasses; i += 1) {
+    smoothed = smoothWithStrength(smoothed, params.initialOutlineSmoothStrength);
+  }
+  return smoothed;
+}
+
+function cleanupMask(binary, width, height, passes) {
+  let cleaned = binary;
+  for (let i = 0; i < passes; i += 1) {
+    cleaned = dilateMask(erodeMask(cleaned, width, height), width, height);
+    cleaned = erodeMask(dilateMask(cleaned, width, height), width, height);
+  }
+  return cleaned;
+}
+
+function erodeMask(binary, width, height) {
+  const result = new Uint8Array(binary.length);
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const idx = y * width + x;
+      let keep = 1;
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          if (!binary[idx + dy * width + dx]) keep = 0;
+        }
+      }
+      result[idx] = keep;
+    }
+  }
+  return result;
+}
+
+function dilateMask(binary, width, height) {
+  const result = new Uint8Array(binary.length);
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const idx = y * width + x;
+      if (!binary[idx]) continue;
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          result[idx + dy * width + dx] = 1;
+        }
+      }
+    }
+  }
+  return result;
 }
 
 function findComponents(binary, width, height) {
@@ -660,9 +724,14 @@ window.addEventListener("keydown", (event) => {
 
 document.querySelectorAll("[data-param]").forEach((slider) => {
   const output = document.querySelector(`output[for="${slider.id}"]`);
-  const decimals = slider.step.includes(".") ? 2 : 0;
+  const decimals = (slider.getAttribute("step") || "").includes(".") ? 2 : 0;
 
   const update = () => {
+    if (slider.type === "checkbox") {
+      params[slider.dataset.param] = slider.checked;
+      return;
+    }
+
     const value = Number(slider.value);
     params[slider.dataset.param] = value;
     if (output) output.textContent = value.toFixed(decimals);
