@@ -11,13 +11,7 @@ The older Python/OpenCV prototype is archived in `archive/`.
 
 ## GitHub Pages
 
-This repository can be served directly with GitHub Pages:
-
-1. Open the repository settings on GitHub.
-2. Go to **Pages**.
-3. Set **Source** to `Deploy from a branch`.
-4. Set the branch to `main` and the folder to `/ (root)`.
-5. Save.
+Try the browser app at [lorechi.github.io/DifferentialGrower](https://lorechi.github.io/DifferentialGrower/).
 
 The browser app uses the webcam, so it must be served from `https://` or
 `localhost`. GitHub Pages works because it serves over HTTPS.

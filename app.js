@@ -3,7 +3,7 @@ const params = {
   minContourArea: 2500, // Ignores tiny segmentation blobs and background noise.
   segmentationThreshold: 0.4, // Minimum mask confidence needed to count as human.
   maskCleanupPasses: 1, // Removes small specks and fills tiny holes in the mask.
-  keepLargestContour: true, // Uses only the largest person-shaped blob when enabled.
+  keepLargestContour: false, // Allows up to maxContours separate person-shaped blobs.
   initialOutlineSmoothPasses: 2, // Smoothing passes applied before growth starts.
   initialOutlineSmoothStrength: 0.35, // Strength of pre-growth outline smoothing.
   maxEdge: 24, // Adds a point when a line segment grows longer than this.
@@ -472,106 +472,73 @@ function findComponents(binary, width, height) {
 }
 
 function componentToLoop(component, binary, width, height) {
-  const boundary = [];
-  const boundarySet = new Set();
-
-  for (const idx of component.pixels) {
-    const x = idx % width;
-    const y = Math.floor(idx / width);
-    const edge =
-      x === 0 ||
-      y === 0 ||
-      x === width - 1 ||
-      y === height - 1 ||
-      !binary[idx - 1] ||
-      !binary[idx + 1] ||
-      !binary[idx - width] ||
-      !binary[idx + width];
-
-    if (edge) {
-      boundary.push({ x, y });
-      boundarySet.add(`${x},${y}`);
-    }
-  }
-
-  if (!boundary.length) return [];
-
-  const ordered = traceBoundary(boundary, boundarySet);
+  const ordered = traceBoundary(component, binary, width, height);
   return ordered.map((point) => imageToCanvasPoint(point.x + 0.5, point.y + 0.5, width, height));
 }
 
-function traceBoundary(boundary, boundarySet) {
-  const start = boundary.reduce((best, point) => {
-    if (point.y < best.y) return point;
-    if (point.y === best.y && point.x < best.x) return point;
-    return best;
-  }, boundary[0]);
+function traceBoundary(component, binary, width, height) {
+  const directions = [
+    { x: -1, y: -1 },
+    { x: 0, y: -1 },
+    { x: 1, y: -1 },
+    { x: 1, y: 0 },
+    { x: 1, y: 1 },
+    { x: 0, y: 1 },
+    { x: -1, y: 1 },
+    { x: -1, y: 0 },
+  ];
+  const startIndex = component.pixels.reduce((best, idx) => {
+    const x = idx % width;
+    const y = Math.floor(idx / width);
+    const bestX = best % width;
+    const bestY = Math.floor(best / width);
+    return y < bestY || (y === bestY && x < bestX) ? idx : best;
+  }, component.pixels[0]);
+  const start = { x: startIndex % width, y: Math.floor(startIndex / width) };
+  const initialBacktrack = { x: start.x - 1, y: start.y };
+  const path = [];
+  let current = { ...start };
+  let backtrack = { ...initialBacktrack };
+  const maxSteps = Math.max(8, component.pixels.length * 8);
 
-  const visited = new Set();
-  const path = [{ ...start }];
-  visited.add(`${start.x},${start.y}`);
-
-  let current = start;
-  let previousDirection = { x: 1, y: 0 };
-
-  while (visited.size < boundary.length) {
-    const next = chooseNextBoundaryPoint(current, previousDirection, boundary, boundarySet, visited);
-    if (!next) break;
-
-    previousDirection = { x: next.x - current.x, y: next.y - current.y };
-    current = next;
+  for (let stepIndex = 0; stepIndex < maxSteps; stepIndex += 1) {
     path.push({ ...current });
-    visited.add(`${current.x},${current.y}`);
 
-    if (path.length > boundary.length * 2) break;
-  }
+    const backtrackDirection = directions.findIndex(
+      (direction) => current.x + direction.x === backtrack.x && current.y + direction.y === backtrack.y,
+    );
+    const scanStart = backtrackDirection >= 0 ? backtrackDirection : 7;
+    let next = null;
+    let nextBacktrack = null;
 
-  return path.length > 10 ? path : boundary;
-}
+    for (let offset = 1; offset <= directions.length; offset += 1) {
+      const directionIndex = (scanStart + offset) % directions.length;
+      const direction = directions[directionIndex];
+      const x = current.x + direction.x;
+      const y = current.y + direction.y;
+      if (x < 0 || y < 0 || x >= width || y >= height || !binary[y * width + x]) continue;
 
-function chooseNextBoundaryPoint(current, previousDirection, boundary, boundarySet, visited) {
-  const candidates = [];
+      const previousDirection = directions[(directionIndex + directions.length - 1) % directions.length];
+      next = { x, y };
+      nextBacktrack = { x: current.x + previousDirection.x, y: current.y + previousDirection.y };
+      break;
+    }
 
-  for (let dy = -1; dy <= 1; dy += 1) {
-    for (let dx = -1; dx <= 1; dx += 1) {
-      if (dx === 0 && dy === 0) continue;
-      const x = current.x + dx;
-      const y = current.y + dy;
-      const key = `${x},${y}`;
-      if (boundarySet.has(key) && !visited.has(key)) {
-        candidates.push({ x, y, dx, dy, distance: Math.hypot(dx, dy) });
-      }
+    if (!next) break;
+    current = next;
+    backtrack = nextBacktrack;
+
+    if (
+      current.x === start.x &&
+      current.y === start.y &&
+      backtrack.x === initialBacktrack.x &&
+      backtrack.y === initialBacktrack.y
+    ) {
+      break;
     }
   }
 
-  if (!candidates.length) {
-    let nearest = null;
-    for (const point of boundary) {
-      const key = `${point.x},${point.y}`;
-      if (visited.has(key)) continue;
-      const dx = point.x - current.x;
-      const dy = point.y - current.y;
-      const distanceToPoint = Math.hypot(dx, dy);
-      if (distanceToPoint > 3) continue;
-      const candidate = { ...point, dx, dy, distance: distanceToPoint };
-      if (!nearest || scoreBoundaryCandidate(candidate, previousDirection) < scoreBoundaryCandidate(nearest, previousDirection)) {
-        nearest = candidate;
-      }
-    }
-    return nearest;
-  }
-
-  candidates.sort(
-    (a, b) => scoreBoundaryCandidate(a, previousDirection) - scoreBoundaryCandidate(b, previousDirection),
-  );
-  return candidates[0];
-}
-
-function scoreBoundaryCandidate(candidate, previousDirection) {
-  const prevLength = Math.hypot(previousDirection.x, previousDirection.y) || 1;
-  const nextLength = Math.hypot(candidate.dx, candidate.dy) || 1;
-  const dot = (previousDirection.x * candidate.dx + previousDirection.y * candidate.dy) / (prevLength * nextLength);
-  return candidate.distance + (1 - dot) * 0.35;
+  return path;
 }
 
 function reseedFromMask() {
@@ -670,7 +637,7 @@ async function start() {
     setInterval(processCamera, 33);
     requestAnimationFrame(render);
   } catch (error) {
-    setStatus(error.message || "Camera permission was not granted.");
+    setStatus("Camera access was denied. Please allow camera access for this website to continue.");
   }
 }
 
